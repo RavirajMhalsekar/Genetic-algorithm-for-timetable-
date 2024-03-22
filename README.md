@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+we are making a timetable generator for our college
 
-## Getting Started
+the frontend is done using nextjs 14 using Typescript and Tailwindcss
+the database we are using is the Appwrite cloud database and it has the following collections and attributes
 
-First, run the development server:
+room {
+name: string
+capacity: integer 
+} 
+ lab {
+name: string
+subject: string
+department: string
+capacity: integer
+}
+ faculty {
+name: string
+designation: string
+department: string
+shortName: string
+}
+subject {
+name: string
+code: string
+lecture: integer
+practical: integer
+tutorial: integer
+semester: integer
+department: string
+split: string
+shortName: string
+}
+meetingInfo{
+name: string
+day: enum[Monday,Tuesday,Wednesday,Thursday,Friday,Saturday ]
+time: string (eg. 09:30AM)
+}
+workshop{
+day: enum[Monday,Tuesday,Wednesday,Thursday,Friday,Saturday ]
+startTime: string (eg. 09:30AM)
+endTime: string (eg. 09:30AM)
+}
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+we have created a dashboard to interact with the database
+all the tables mentioned above store the respective data
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+aim of the project: using all the data from the database we have to generate the timetable for the entire college
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+current task: we have to create the genetic algorithm to generate the timetables using data from all the tables mentioned above 
 
-## Learn More
+from the UI when we send data to the algorithm these are all the values that will be passed to the algorithm
 
-To learn more about Next.js, take a look at the following resources:
+first, the room data will store info about all the rooms available for each department 
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
