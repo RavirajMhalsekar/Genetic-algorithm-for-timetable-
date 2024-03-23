@@ -670,7 +670,32 @@ const rooms = [
     department: "IT",
   },
 ];
-
+const getTimeslots = (year) => {
+  if (year === "FE" || year === "SE") {
+    return [
+      "9:00 - 10:00",
+      "10:00 - 11:00",
+      "11:00 - 12:00",
+      "12:00 - 1:00", // Lunch break
+      "1:00 - 2:00",
+      "2:00 - 3:00",
+      "3:00 - 4:00",
+      "4:00 - 5:00",
+    ];
+  } else if (year === "TE" || year === "BE") {
+    return [
+      "9:00 - 10:00",
+      "10:00 - 11:00",
+      "11:00 - 11:15", // Tea break
+      "11:15 - 12:15",
+      "12:15 - 1:15",
+      "1:15 - 2:00", // Lunch break
+      "2:00 - 3:00",
+      "3:00 - 4:00",
+      "4:00 - 5:00",
+    ];
+  }
+};
 // Define the genetic algorithm functions
 const initializePopulation = (populationSize, classDetails) => {
   const population = [];
@@ -683,6 +708,9 @@ const initializePopulation = (populationSize, classDetails) => {
         department,
         year,
         div,
+        strength,
+        practical_batch,
+        subject,
         timetable: generateRandomClassTimetable(classDetail),
       };
       timetable.push(classTimetable);
@@ -701,8 +729,7 @@ const generateRandomClassTimetable = (classDetail) => {
   for (let day = 0; day < 5; day++) {
     // 5 days in a week (Monday to Friday)
     const dailySchedule = [];
-    for (let timeslot = 0; timeslot < 8; timeslot++) {
-      // 8 timeslots per day
+    for (let timeslot = 0; timeslot < getTimeslots(year).length; timeslot++) {
       const roomIndex = Math.floor(Math.random() * rooms.length);
       const room = rooms[roomIndex];
 
@@ -721,7 +748,7 @@ const generateRandomClassTimetable = (classDetail) => {
         slot.type = "break";
         slot.startTime = "11:00 AM";
         slot.endTime = "11:15 AM";
-      } else if ((year === "TE" || year === "BE") && timeslot === 4) {
+      } else if ((year === "TE" || year === "BE") && timeslot === 5) {
         slot.type = "break";
         slot.startTime = "1:15 PM";
         slot.endTime = "2:00 PM";
@@ -803,12 +830,18 @@ const checkRoomAllocation = (timetable, classDetails) => {
           const { room, subject } = slot;
           const { department: subjectDepartment } = subject;
 
-          if (
-            subjectDepartment !== department &&
-            room.department !== subjectDepartment
-          ) {
-            // Subject department and room department mismatch
-            return false;
+          if (subjectDepartment === department) {
+            // Subject department matches the class department
+            if (room.department !== department) {
+              // Room department does not match class department
+              return false;
+            }
+          } else {
+            // Subject department is different from class department
+            if (room.department !== subjectDepartment) {
+              // Room department does not match subject department
+              return false;
+            }
           }
 
           if (subject.practical > 0 && room.type !== "lab") {
@@ -836,12 +869,37 @@ const checkLabAllocation = (timetable, classDetails) => {
 
     for (const dailySchedule of classTimeTable.timetable) {
       for (const slot of dailySchedule) {
-        if (slot.subject.practical > 0) {
+        const { subject, room } = slot;
+        if (subject.practical > 0) {
           const labIndex = availableLabs.findIndex(
-            (lab) => lab.name === slot.room.name
+            (lab) => lab.name === room.name
           );
           if (labIndex !== -1) {
             labUsageCount[labIndex]++;
+          } else {
+            // Check if any lab is available for the subject's department
+            const subjectDepartment = subject.department;
+            const availableLabsForSubject = labs.filter(
+              (lab) => lab.department === subjectDepartment
+            );
+            if (availableLabsForSubject.length > 0) {
+              // Assign the first available lab
+              slot.room = availableLabsForSubject[0];
+            } else {
+              // No available labs for the subject's department, assign any available room
+              const availableRoom = rooms.find(
+                (room) =>
+                  !dailySchedule.some(
+                    (otherSlot) => otherSlot.room.name === room.name
+                  )
+              );
+              if (availableRoom) {
+                slot.room = availableRoom;
+              } else {
+                // No available rooms found
+                return false;
+              }
+            }
           }
         }
       }
@@ -854,7 +912,26 @@ const checkLabAllocation = (timetable, classDetails) => {
   }
   return true;
 };
+const isRoomAvailable = (department, timeslot, timetable) => {
+  const availableRooms = rooms.filter((room) => room.department === department);
 
+  for (const classTimeTable of timetable) {
+    const { timetable: classSchedule } = classTimeTable;
+    const dailySchedule = classSchedule[timeslot.day - 1]; // Assuming day index starts from 1
+
+    for (const slot of dailySchedule) {
+      const roomIndex = availableRooms.findIndex(
+        (room) => room.name === slot.room.name
+      );
+      if (roomIndex !== -1) {
+        // Room is not available
+        availableRooms.splice(roomIndex, 1);
+      }
+    }
+  }
+
+  return availableRooms.length > 0;
+};
 const checkSubjectDistribution = (timetable, classDetails) => {
   for (const classTimeTable of timetable) {
     const { department, year, div, timetable } = classTimeTable;
@@ -1058,7 +1135,28 @@ const checkInstructorLoadBalance = (timetable) => {
 
   return true;
 };
+const checkRoomAvailability = (timetable) => {
+  for (const classTimeTable of timetable) {
+    const { department, timetable: classSchedule } = classTimeTable;
 
+    for (const [dayIndex, dailySchedule] of classSchedule.entries()) {
+      for (const slot of dailySchedule) {
+        const { room, subject } = slot;
+        const timeslot = {
+          day: dayIndex + 1, // Assuming day index starts from 0
+          // Add other necessary information about the timeslot
+        };
+
+        const subjectDepartment = subject.department || department;
+        if (!isRoomAvailable(subjectDepartment, timeslot, timetable)) {
+          return false;
+        }
+      }
+    }
+  }
+
+  return true;
+};
 const evaluateFitness = (timetable) => {
   let fitnessScore = 0;
   const constraints = {
@@ -1071,6 +1169,7 @@ const evaluateFitness = (timetable) => {
     instructorLoadBalance: checkInstructorLoadBalance(timetable),
     roomAllocation: checkRoomAllocation(timetable, classDetails),
     labAllocation: checkLabAllocation(timetable, classDetails),
+    roomAvailability: checkRoomAvailability(timetable), // Add this new constraint
   };
 
   for (const constraint in constraints) {
@@ -1114,43 +1213,66 @@ const Timetable = () => {
 
     runGeneticAlgorithm();
   }, []);
+
   const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
   return (
     <div>
-      <h1>Timetable Generation</h1>
       {bestTimetable.map((timetableForClass, index) => (
-        <div key={index}>
+        <div key={index} className="p-3">
           <h2 className="mt-5 mb-5">
-            Class Timetable =  Year: {timetableForClass.year},
-            Department: {timetableForClass.department}, Division:{" "}
-            {timetableForClass.div}
-
-
+            Class : {timetableForClass.year} {timetableForClass.department},
+            Division: {timetableForClass.div}
           </h2>
           <table className="table-auto w-full text-center border-2">
             <thead>
               <tr>
                 <th></th>
-                <th>9:00 - 10:00</th>
-                <th>10:00 - 11:00</th>
-                <th>11:15 - 12:15</th>
-                <th>12:15 - 1:15</th>
-                <th>2:00 - 3:00</th>
-                <th>3:00 - 4:00</th>
-                <th>4:00 - 5:00</th>
-                <th>5:00 - 6:00</th>
+                {getTimeslots(timetableForClass.year).map((slot, index) => (
+                  <th key={index} className="bg-slate-300">
+                    {slot}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="border-2">
               {timetableForClass.timetable.map((dailySchedule, dayIndex) => (
                 <tr key={dayIndex}>
-                  <td className="border-2">{daysOfWeek[dayIndex]}</td>
+                  <td className="border-2 bg-slate-300">
+                    {daysOfWeek[dayIndex]}
+                  </td>
                   {dailySchedule.map((slot, timeslotIndex) => (
-                    <td className="border-2" key={timeslotIndex}>
-                      {slot.subject.name} ({slot.room.name})
+                    <td
+                      className={`border-2 ${
+                        slot.type === "break" ? "bg-gray-200" : ""
+                      }`}
+                      key={timeslotIndex}
+                    >
+                      {slot.type === "break"
+                        ? `Break (${slot.startTime} - ${slot.endTime})`
+                        : `${slot.subject.name} ${slot.subject.faculty.shortName} (${slot.room.name})`}
                     </td>
                   ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <table className="table-auto mt-4 border-2">
+            <thead>
+              <tr>
+                <th className="bg-slate-300">Subjects</th>
+                <th className="bg-slate-300">Faculty</th>
+              </tr>
+            </thead>
+            <tbody>
+              {timetableForClass.subject.map((subject, index) => (
+                <tr key={index}>
+                  <td className="border-2">
+                    {subject.code} : {subject.name}
+                  </td>
+                  <td className="border-2">
+                    {subject.faculty.shortName} - {subject.faculty.name}
+                  </td>
                 </tr>
               ))}
             </tbody>
