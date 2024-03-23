@@ -525,6 +525,18 @@ const labs = [
     department: "IT",
     capacity: 25,
   },
+  {
+    name: "Physics Lab",
+    subject: "Physics",
+    department: "general",
+    capacity: 10,
+  },
+  {
+    name: "Chemistry Lab",
+    subject: "Chemistry",
+    department: "general",
+    capacity: 10,
+  },
 ];
 
 const workshops = [
@@ -870,34 +882,53 @@ const checkLabAllocation = (timetable, classDetails) => {
     for (const dailySchedule of classTimeTable.timetable) {
       for (const slot of dailySchedule) {
         const { subject, room } = slot;
-        if (subject.practical > 0) {
-          const labIndex = availableLabs.findIndex(
-            (lab) => lab.name === room.name
-          );
-          if (labIndex !== -1) {
-            labUsageCount[labIndex]++;
-          } else {
-            // Check if any lab is available for the subject's department
-            const subjectDepartment = subject.department;
-            const availableLabsForSubject = labs.filter(
-              (lab) => lab.department === subjectDepartment
+        if (subject.name.includes("Lab")) {
+          let assignedLab = null;
+
+          // Check for specific lab subjects
+          if (subject.name === "Physics Lab") {
+            assignedLab = labs.find(
+              (lab) => lab.subject === "Physics" && lab.department === "general"
             );
-            if (availableLabsForSubject.length > 0) {
-              // Assign the first available lab
-              slot.room = availableLabsForSubject[0];
+          } else if (subject.name === "Chemistry Lab") {
+            assignedLab = labs.find(
+              (lab) =>
+                lab.subject === "Chemistry" && lab.department === "general"
+            );
+          }
+
+          if (assignedLab) {
+            // Assign the specific lab
+            slot.room = assignedLab;
+          } else {
+            const labIndex = availableLabs.findIndex(
+              (lab) => lab.name === room.name
+            );
+            if (labIndex !== -1) {
+              labUsageCount[labIndex]++;
             } else {
-              // No available labs for the subject's department, assign any available room
-              const availableRoom = rooms.find(
-                (room) =>
-                  !dailySchedule.some(
-                    (otherSlot) => otherSlot.room.name === room.name
-                  )
+              // Check if any lab is available for the subject's department
+              const subjectDepartment = subject.department;
+              const availableLabsForSubject = labs.filter(
+                (lab) => lab.department === subjectDepartment
               );
-              if (availableRoom) {
-                slot.room = availableRoom;
+              if (availableLabsForSubject.length > 0) {
+                // Assign the first available lab
+                slot.room = availableLabsForSubject[0];
               } else {
-                // No available rooms found
-                return false;
+                // No available labs for the subject's department, assign any available room
+                const availableRoom = rooms.find(
+                  (room) =>
+                    !dailySchedule.some(
+                      (otherSlot) => otherSlot.room.name === room.name
+                    )
+                );
+                if (availableRoom) {
+                  slot.room = availableRoom;
+                } else {
+                  // No available rooms found
+                  return false;
+                }
               }
             }
           }
