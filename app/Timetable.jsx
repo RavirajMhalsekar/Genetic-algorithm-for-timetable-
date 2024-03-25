@@ -355,7 +355,7 @@ const classDetails = [
       {
         name: "Cryptography Techniques for Network Security",
         code: "CE810",
-        lecture: 3,
+        lecture: 1,
         tutorial: 0,
         practical: 0,
         department: "COMP",
@@ -367,7 +367,7 @@ const classDetails = [
       {
         name: "Pattern Recognition",
         code: "CE822",
-        lecture: 3,
+        lecture: 1,
         tutorial: 0,
         practical: 0,
         department: "COMP",
@@ -379,7 +379,7 @@ const classDetails = [
       {
         name: "Internet of things",
         code: "CE821",
-        lecture: 3,
+        lecture: 1,
         tutorial: 0,
         practical: 0,
         department: "COMP",
@@ -391,9 +391,9 @@ const classDetails = [
       {
         name: "Project Work Phase II",
         code: "CE840",
-        lecture: 3,
+        lecture: 0,
         tutorial: 0,
-        practical: 18,
+        practical: 10,
         department: "COMP",
         Split: "NO",
         openElective: "NO",
@@ -737,6 +737,22 @@ const generateRandomClassTimetable = (classDetail) => {
     classDetail;
   const classTimetable = [];
 
+  // Keep track of instance counts for each subject and type
+  const subjectInstanceCounts = subject.reduce((counts, subjectData) => {
+    counts[subjectData.code] = {
+      lecture: 0,
+      tutorial: 0,
+      practical: 0,
+      lectureMax:
+        subjectData.split === "YES"
+          ? subjectData.lecture * 2
+          : subjectData.lecture,
+      tutorialMax: subjectData.tutorial * 2,
+      practicalMax: subjectData.practical,
+    };
+    return counts;
+  }, {});
+
   // Implement basic logic to generate a random timetable for the class
   for (let day = 0; day < 5; day++) {
     // 5 days in a week (Monday to Friday)
@@ -748,13 +764,32 @@ const generateRandomClassTimetable = (classDetail) => {
       const subjectIndex = Math.floor(Math.random() * subject.length);
       const subjectData = subject[subjectIndex];
 
+      const type =
+        subjectInstanceCounts[subjectData.code].lecture <
+        subjectInstanceCounts[subjectData.code].lectureMax
+          ? "lecture"
+          : subjectInstanceCounts[subjectData.code].tutorial <
+            subjectInstanceCounts[subjectData.code].tutorialMax
+          ? "tutorial"
+          : subjectInstanceCounts[subjectData.code].practical <
+            subjectInstanceCounts[subjectData.code].practicalMax
+          ? "practical"
+          : null;
+
+      if (type === null) {
+        // No more slots available for this subject
+        continue;
+      }
+
+      const instanceCount = ++subjectInstanceCounts[subjectData.code][type];
+
       const slot = {
         room,
         subject: subjectData,
-        type: "lecture", // Set the default type to "lecture"
+        type,
+        instanceCount, // Add instance count to the slot
         // Add other necessary information
       };
-
       // Add break slots
       if ((year === "TE" || year === "BE") && timeslot === 2) {
         slot.type = "break";
@@ -999,7 +1034,6 @@ const checkSubjectDistribution = (timetable, classDetails) => {
         ) {
           return false;
         }
-
         // Check subject distribution throughout the week
         const dayCounters = new Array(5).fill(0);
         for (const dailySchedule of timetable) {
@@ -1243,6 +1277,7 @@ const Timetable = () => {
 
   return (
     <div>
+      {console.log(bestTimetable)}
       {bestTimetable.map((timetableForClass, index) => (
         <div key={index} className="p-3">
           <h2 className="mt-5 mb-5">
@@ -1275,7 +1310,11 @@ const Timetable = () => {
                     >
                       {slot.type === "break"
                         ? `Break (${slot.startTime} - ${slot.endTime})`
-                        : `${slot.subject.name} ${slot.subject.faculty.shortName} (${slot.room.name})`}
+                        : `${slot.type.toUpperCase()}${
+                            slot.instanceCount || ""
+                          } - ${slot.subject.name} ${
+                            slot.subject.faculty.shortName
+                          } (${slot.room.name})`}
                     </td>
                   ))}
                 </tr>
