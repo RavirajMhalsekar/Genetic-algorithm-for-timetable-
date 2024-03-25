@@ -753,7 +753,7 @@ const generateRandomClassTimetable = (classDetail) => {
     return counts;
   }, {});
 
-  // Implement basic logic to generate a random timetable for the class
+  // Implement logic to generate a random timetable for the class
   for (let day = 0; day < 5; day++) {
     // 5 days in a week (Monday to Friday)
     const dailySchedule = [];
@@ -776,20 +776,17 @@ const generateRandomClassTimetable = (classDetail) => {
           ? "practical"
           : null;
 
-      if (type === null) {
-        // No more slots available for this subject
-        continue;
-      }
-
-      const instanceCount = ++subjectInstanceCounts[subjectData.code][type];
-
       const slot = {
         room,
-        subject: subjectData,
+        subject: type === null ? null : subjectData,
         type,
-        instanceCount, // Add instance count to the slot
+        instanceCount:
+          type === null
+            ? null
+            : ++subjectInstanceCounts[subjectData.code][type], // Add instance count to the slot
         // Add other necessary information
       };
+
       // Add break slots
       if ((year === "TE" || year === "BE") && timeslot === 2) {
         slot.type = "break";
@@ -812,7 +809,6 @@ const generateRandomClassTimetable = (classDetail) => {
 
   return classTimetable;
 };
-
 const checkRoomDepartmentMatch = (timetable) => {
   for (const classTimeTable of timetable) {
     const { department, year, div, timetable } = classTimeTable;
@@ -821,6 +817,7 @@ const checkRoomDepartmentMatch = (timetable) => {
         const { room, subject } = slot;
 
         if (
+          subject &&
           subject.department !== room.department &&
           room.department !== department
         ) {
@@ -840,7 +837,11 @@ const checkLabDepartmentMatch = (timetable) => {
       for (const slot of dailySchedule) {
         const { subject } = slot;
 
-        if (subject.practical > 0 && slot.room.department !== department) {
+        if (
+          subject &&
+          subject.practical > 0 &&
+          slot.room.department !== department
+        ) {
           return false;
         }
       }
@@ -917,7 +918,8 @@ const checkLabAllocation = (timetable, classDetails) => {
     for (const dailySchedule of classTimeTable.timetable) {
       for (const slot of dailySchedule) {
         const { subject, room } = slot;
-        if (subject.name.includes("Lab")) {
+        if (subject && subject.name.includes("Lab")) {
+          // Add null check for subject
           let assignedLab = null;
 
           // Check for specific lab subjects
@@ -980,12 +982,15 @@ const isRoomAvailable = (department, timeslot, timetable) => {
     const dailySchedule = classSchedule[timeslot.day - 1]; // Assuming day index starts from 1
 
     for (const slot of dailySchedule) {
-      const roomIndex = availableRooms.findIndex(
-        (room) => room.name === slot.room.name
-      );
-      if (roomIndex !== -1) {
-        // Room is not available
-        availableRooms.splice(roomIndex, 1);
+      if (slot.room) {
+        // Add null check for slot.room
+        const roomIndex = availableRooms.findIndex(
+          (room) => room.name === slot.room.name
+        );
+        if (roomIndex !== -1) {
+          // Room is not available
+          availableRooms.splice(roomIndex, 1);
+        }
       }
     }
   }
@@ -1011,7 +1016,8 @@ const checkSubjectDistribution = (timetable, classDetails) => {
 
         for (const dailySchedule of timetable) {
           for (const slot of dailySchedule) {
-            if (slot.subject.code === code) {
+            if (slot.subject && slot.subject.code === code) {
+              // Add null check for slot.subject
               if (slot.type === "lecture") {
                 lectureCount++;
               } else if (slot.type === "tutorial") {
@@ -1038,7 +1044,8 @@ const checkSubjectDistribution = (timetable, classDetails) => {
         const dayCounters = new Array(5).fill(0);
         for (const dailySchedule of timetable) {
           for (const slot of dailySchedule) {
-            if (slot.subject.code === code) {
+            if (slot.subject && slot.subject.code === code) {
+              // Add null check for slot.subject
               dayCounters[dailySchedule.dayIndex]++;
             }
           }
@@ -1056,7 +1063,10 @@ const checkSubjectDistribution = (timetable, classDetails) => {
         if (split === "YES") {
           for (const dailySchedule of timetable) {
             const pairedLectures = dailySchedule.filter(
-              (slot) => slot.subject.split === "YES" && slot.type === "lecture"
+              (slot) =>
+                slot.subject &&
+                slot.subject.split === "YES" &&
+                slot.type === "lecture" // Add null check for slot.subject
             );
 
             if (pairedLectures.length % 2 !== 0) {
@@ -1126,14 +1136,16 @@ const checkInstructorRest = (timetable) => {
     const { timetable } = classTimeTable;
     for (const dailySchedule of timetable) {
       for (const slot of dailySchedule) {
-        const { faculty } = slot.subject;
-        const { name } = faculty;
+        if (slot.subject) { // Add null check for slot.subject
+          const { faculty } = slot.subject;
+          const { name } = faculty;
 
-        if (!instructorTimetables[name]) {
-          instructorTimetables[name] = [];
+          if (!instructorTimetables[name]) {
+            instructorTimetables[name] = [];
+          }
+
+          instructorTimetables[name].push(slot);
         }
-
-        instructorTimetables[name].push(slot);
       }
     }
   }
@@ -1167,14 +1179,17 @@ const checkInstructorLoadBalance = (timetable) => {
     const { timetable } = classTimeTable;
     for (const dailySchedule of timetable) {
       for (const slot of dailySchedule) {
-        const { faculty } = slot.subject;
-        const { name } = faculty;
+        if (slot.subject) {
+          // Check if slot.subject is not undefined
+          const { faculty } = slot.subject;
+          const { name } = faculty;
 
-        if (!instructorLoadCounts[name]) {
-          instructorLoadCounts[name] = 0;
+          if (!instructorLoadCounts[name]) {
+            instructorLoadCounts[name] = 0;
+          }
+
+          instructorLoadCounts[name]++;
         }
-
-        instructorLoadCounts[name]++;
       }
     }
   }
@@ -1206,7 +1221,9 @@ const checkRoomAvailability = (timetable) => {
           // Add other necessary information about the timeslot
         };
 
-        const subjectDepartment = subject.department || department;
+        const subjectDepartment = subject
+          ? subject.department || department
+          : department;
         if (!isRoomAvailable(subjectDepartment, timeslot, timetable)) {
           return false;
         }
@@ -1310,11 +1327,15 @@ const Timetable = () => {
                     >
                       {slot.type === "break"
                         ? `Break (${slot.startTime} - ${slot.endTime})`
-                        : `${slot.type.toUpperCase()}${
+                        : slot.type === "empty"
+                        ? ""
+                        : slot.type
+                        ? `${slot.type.toUpperCase()}${
                             slot.instanceCount || ""
                           } - ${slot.subject.name} ${
                             slot.subject.faculty.shortName
-                          } (${slot.room.name})`}
+                          } (${slot.room.name})`
+                        : ""}
                     </td>
                   ))}
                 </tr>
