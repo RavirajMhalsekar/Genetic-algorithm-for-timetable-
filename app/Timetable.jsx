@@ -1081,7 +1081,6 @@ const checkSubjectDistribution = (timetable, classDetails) => {
   return true;
 };
 
-
 const checkBreakTimings = (timetable) => {
   for (const classTimeTable of timetable) {
     const { year, timetable } = classTimeTable;
@@ -1136,7 +1135,8 @@ const checkInstructorRest = (timetable) => {
     const { timetable } = classTimeTable;
     for (const dailySchedule of timetable) {
       for (const slot of dailySchedule) {
-        if (slot.subject) { // Add null check for slot.subject
+        if (slot.subject) {
+          // Add null check for slot.subject
           const { faculty } = slot.subject;
           const { name } = faculty;
 
@@ -1291,15 +1291,21 @@ const Timetable = () => {
   }, []);
 
   const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-
+  const getPracticalBatches = (practical_batch) => {
+    const batches = [];
+    for (let i = 1; i <= practical_batch; i++) {
+      batches.push(`P${i}`);
+    }
+    return batches;
+  };
   return (
     <div>
-      {console.log(bestTimetable)}
       {bestTimetable.map((timetableForClass, index) => (
         <div key={index} className="p-3">
           <h2 className="mt-5 mb-5">
             Class : {timetableForClass.year} {timetableForClass.department},
-            Division: {timetableForClass.div}
+            Division : {timetableForClass.div} {"  , "}
+            practical batch : {timetableForClass.practical_batch}
           </h2>
           <table className="table-auto w-full text-center border-2">
             <thead>
@@ -1320,7 +1326,7 @@ const Timetable = () => {
                   </td>
                   {dailySchedule.map((slot, timeslotIndex) => (
                     <td
-                      className={`border-2 ${
+                      className={`border-2 min-w-32 max-w-40 h-16 ${
                         slot.type === "break" ? "bg-gray-200" : ""
                       }`}
                       key={timeslotIndex}
@@ -1330,10 +1336,16 @@ const Timetable = () => {
                         : slot.type === "empty"
                         ? ""
                         : slot.type
-                        ? `${slot.type.toUpperCase()}${
-                            slot.instanceCount || ""
-                          } - ${slot.subject.name} ${
+                        ? `${slot.subject.name} ${
                             slot.subject.faculty.shortName
+                          } ${
+                            slot.type === "lecture"
+                              ? `(L${slot.instanceCount})`
+                              : slot.type === "tutorial"
+                              ? `(T${slot.instanceCount})`
+                              : slot.type === "practical"
+                              ? ""
+                              : ""
                           } (${slot.room.name})`
                         : ""}
                     </td>
@@ -1342,26 +1354,47 @@ const Timetable = () => {
               ))}
             </tbody>
           </table>
-          <table className="table-auto mt-4 border-2">
-            <thead>
-              <tr>
-                <th className="bg-slate-300">Subjects</th>
-                <th className="bg-slate-300">Faculty</th>
-              </tr>
-            </thead>
-            <tbody>
-              {timetableForClass.subject.map((subject, index) => (
-                <tr key={index}>
-                  <td className="border-2">
-                    {subject.code} : {subject.name}
-                  </td>
-                  <td className="border-2">
-                    {subject.faculty.shortName} - {subject.faculty.name}
-                  </td>
+          <div className="flex gap-5 object-contain">
+            <table className="table-auto mt-4 border-2">
+              <thead>
+                <tr>
+                  <th className="bg-slate-300">Subjects</th>
+                  <th className="bg-slate-300">Faculty</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {timetableForClass.subject.map((subject, index) => (
+                  <tr key={index}>
+                    <td className="border-2">
+                      {subject.code} : {subject.name}
+                    </td>
+                    <td className="border-2">
+                      {subject.faculty.shortName} - {subject.faculty.name}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <table className="table-auto mt-4 border-2">
+              <thead>
+                <tr>
+                  <th colSpan={2} className="bg-slate-300">
+                    Practical Batches
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {getPracticalBatches(timetableForClass.practical_batch).map(
+                  (batch, index) => (
+                    <tr key={index}>
+                      <td className="border-2 min-w-24">{batch}</td>
+                      <td className="border-2 min-w-24"></td>
+                    </tr>
+                  )
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       ))}
     </div>
