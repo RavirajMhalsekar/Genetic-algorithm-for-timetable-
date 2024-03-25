@@ -758,8 +758,18 @@ const generateRandomClassTimetable = (classDetail) => {
     // 5 days in a week (Monday to Friday)
     const dailySchedule = [];
     for (let timeslot = 0; timeslot < getTimeslots(year).length; timeslot++) {
-      const roomIndex = Math.floor(Math.random() * rooms.length);
-      const room = rooms[roomIndex];
+      const availableRooms = rooms.filter(
+        (room) => room.department === department
+      );
+      let room;
+      if (availableRooms.length > 0) {
+        const roomIndex = Math.floor(Math.random() * availableRooms.length);
+        room = availableRooms[roomIndex];
+      } else {
+        // Handle the case where no available rooms are found for the department
+        // You can either assign a default room or mark the slot as empty
+        room = null; // Marking the slot as empty for now
+      }
 
       const subjectIndex = Math.floor(Math.random() * subject.length);
       const subjectData = subject[subjectIndex];
@@ -876,7 +886,14 @@ const checkRoomAllocation = (timetable, classDetails) => {
       for (const dailySchedule of timetable) {
         for (const slot of dailySchedule) {
           const { room, subject } = slot;
-          const { department: subjectDepartment } = subject;
+          let subjectDepartment;
+
+          if (subject) {
+            // Check if subject is not null before destructuring
+            subjectDepartment = subject.department;
+          } else {
+            subjectDepartment = department; // Assume the class department if subject is null
+          }
 
           if (subjectDepartment === department) {
             // Subject department matches the class department
@@ -892,7 +909,7 @@ const checkRoomAllocation = (timetable, classDetails) => {
             }
           }
 
-          if (subject.practical > 0 && room.type !== "lab") {
+          if (subject && subject.practical > 0 && room.type !== "lab") {
             // Practical subject not assigned to a lab
             return false;
           }
@@ -1250,7 +1267,11 @@ const evaluateFitness = (timetable) => {
 
   for (const constraint in constraints) {
     if (constraints[constraint]) {
-      fitnessScore++;
+      if (constraint === "roomAllocation") {
+        fitnessScore += 2; // Give a higher weight to the room allocation constraint
+      } else {
+        fitnessScore++;
+      }
     }
   }
 
