@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 
 const classDetails = [
   {
-    department: "COMP",
+    department: "IT",
     year: "FE",
     div: "A",
     strength: 88,
@@ -723,7 +723,7 @@ const initializePopulation = (populationSize, classDetails) => {
         strength,
         practical_batch,
         subject,
-        timetable: generateRandomClassTimetable(classDetail),
+        timetable: generateRandomClassTimetable(classDetail, timetable), // Pass timetable as the second argument
       };
       timetable.push(classTimetable);
     }
@@ -732,7 +732,7 @@ const initializePopulation = (populationSize, classDetails) => {
   return population;
 };
 
-const generateRandomClassTimetable = (classDetail) => {
+const generateRandomClassTimetable = (classDetail, timetable, classDetails) => {
   const { department, year, div, strength, practical_batch, subject } =
     classDetail;
   const classTimetable = [];
@@ -754,37 +754,61 @@ const generateRandomClassTimetable = (classDetail) => {
   }, {});
 
   // Implement logic to generate a random timetable for the class
-  for (let day = 0; day < 5; day++) {
+  const days = [0, 1, 2, 3, 4]; // Array of day indices
+  for (const day of days) {
     // 5 days in a week (Monday to Friday)
     const dailySchedule = [];
-    for (let timeslot = 0; timeslot < getTimeslots(year).length; timeslot++) {
+    const timeslots = getTimeslots(year);
+    for (let timeslot = 0; timeslot < timeslots.length; timeslot++) {
       const availableRooms = rooms.filter(
         (room) => room.department === department
       );
-      let room;
-      if (availableRooms.length > 0) {
-        const roomIndex = Math.floor(Math.random() * availableRooms.length);
-        room = availableRooms[roomIndex];
-      } else {
-        // Handle the case where no available rooms are found for the department
-        // You can either assign a default room or mark the slot as empty
-        room = null; // Marking the slot as empty for now
+      let room = null;
+
+      const timeslotObj = {
+        day: day + 1, // Assuming day index starts from 0
+        // Add other necessary information about the timeslot
+      };
+
+      // Check if any rooms are already assigned for this timeslot
+      const assignedRooms = classDetails
+        ? classDetails.flatMap(
+            (classDetail) =>
+              classDetail.timetable?.[day]?.flatMap((slot) => slot.room) || []
+          )
+        : [];
+
+      const availableRoomsForTimeslot = availableRooms.filter(
+        (room) => !assignedRooms.includes(room)
+      );
+
+      if (availableRoomsForTimeslot.length > 0) {
+        const roomIndex = Math.floor(
+          Math.random() * availableRoomsForTimeslot.length
+        );
+        room = availableRoomsForTimeslot[roomIndex];
       }
 
       const subjectIndex = Math.floor(Math.random() * subject.length);
       const subjectData = subject[subjectIndex];
 
-      const type =
-        subjectInstanceCounts[subjectData.code].lecture <
-        subjectInstanceCounts[subjectData.code].lectureMax
-          ? "lecture"
-          : subjectInstanceCounts[subjectData.code].tutorial <
-            subjectInstanceCounts[subjectData.code].tutorialMax
-          ? "tutorial"
-          : subjectInstanceCounts[subjectData.code].practical <
-            subjectInstanceCounts[subjectData.code].practicalMax
-          ? "practical"
-          : null;
+      let type;
+      if (subjectData.name === "Project Work Phase II") {
+        // Special case for Project Work Phase II
+        type = "practical";
+      } else {
+        type =
+          subjectInstanceCounts[subjectData.code].lecture <
+          subjectInstanceCounts[subjectData.code].lectureMax
+            ? "lecture"
+            : subjectInstanceCounts[subjectData.code].tutorial <
+              subjectInstanceCounts[subjectData.code].tutorialMax
+            ? "tutorial"
+            : subjectInstanceCounts[subjectData.code].practical <
+              subjectInstanceCounts[subjectData.code].practicalMax
+            ? "practical"
+            : null;
+      }
 
       const slot = {
         room,
@@ -825,20 +849,44 @@ const checkRoomDepartmentMatch = (timetable) => {
     for (const dailySchedule of timetable) {
       for (const slot of dailySchedule) {
         const { room, subject } = slot;
+        let subjectDepartment;
+        let roomDepartment;
+
+        if (subject) {
+          subjectDepartment = subject.department;
+        } else {
+          subjectDepartment = department;
+        }
+
+        if (room) {
+          roomDepartment = room.department;
+        } else {
+          roomDepartment = department;
+        }
 
         if (
-          subject &&
-          subject.department !== room.department &&
-          room.department !== department
+          subjectDepartment !== roomDepartment &&
+          roomDepartment !== department
         ) {
           return false;
+        }
+
+        if (subject && subject.practical > 0) {
+          if (room) {
+            if (room.department !== department) {
+              return false;
+            }
+          } else {
+            // If room is null, assume it belongs to the class department
+            // and return false since practical subjects should be assigned to a lab
+            return false;
+          }
         }
       }
     }
   }
   return true;
 };
-
 const checkLabDepartmentMatch = (timetable) => {
   for (const classTimeTable of timetable) {
     const { department, timetable } = classTimeTable;
@@ -847,12 +895,16 @@ const checkLabDepartmentMatch = (timetable) => {
       for (const slot of dailySchedule) {
         const { subject } = slot;
 
-        if (
-          subject &&
-          subject.practical > 0 &&
-          slot.room.department !== department
-        ) {
-          return false;
+        if (subject && subject.practical > 0) {
+          if (slot.room) {
+            if (slot.room.department !== department) {
+              return false;
+            }
+          } else {
+            // If slot.room is null, it means the practical subject is not assigned to a lab
+            // which violates the constraint, so return false
+            return false;
+          }
         }
       }
     }
@@ -992,22 +1044,41 @@ const checkLabAllocation = (timetable, classDetails) => {
 };
 
 const isRoomAvailable = (department, timeslot, timetable) => {
-  const availableRooms = rooms.filter((room) => room.department === department);
+  let availableRooms = rooms.filter((room) => room.department === department);
 
   for (const classTimeTable of timetable) {
-    const { timetable: classSchedule } = classTimeTable;
+    const { timetable: classSchedule, subject } = classTimeTable;
     const dailySchedule = classSchedule[timeslot.day - 1]; // Assuming day index starts from 1
 
     for (const slot of dailySchedule) {
       if (slot.room) {
         // Add null check for slot.room
+        const subjectDepartment = slot.subject
+          ? slot.subject.department
+          : department;
+        const roomDepartment = slot.room.department;
+
         const roomIndex = availableRooms.findIndex(
           (room) => room.name === slot.room.name
         );
-        if (roomIndex !== -1) {
-          // Room is not available
+
+        if (roomIndex !== -1 && subjectDepartment === roomDepartment) {
+          // Room is not available for the subject's department
           availableRooms.splice(roomIndex, 1);
         }
+      }
+    }
+
+    // Check if there are enough available rooms for subjects with high practical counts
+    const highPracticalSubjects = subject.filter(
+      (subjectData) => subjectData.practical > 4
+    );
+    for (const subjectData of highPracticalSubjects) {
+      const requiredRoomCount = subjectData.practical;
+      const availableRoomCount = availableRooms.length;
+
+      if (availableRoomCount < requiredRoomCount) {
+        return false;
       }
     }
   }
@@ -1356,9 +1427,11 @@ const Timetable = () => {
                         ? `Break (${slot.startTime} - ${slot.endTime})`
                         : slot.type === "empty"
                         ? ""
-                        : slot.type
+                        : slot.type && slot.subject
                         ? `${slot.subject.name} ${
-                            slot.subject.faculty.shortName
+                            slot.subject.faculty
+                              ? slot.subject.faculty.shortName
+                              : ""
                           } ${
                             slot.type === "lecture"
                               ? `(L${slot.instanceCount})`
@@ -1367,7 +1440,7 @@ const Timetable = () => {
                               : slot.type === "practical"
                               ? ""
                               : ""
-                          } (${slot.room.name})`
+                          } (${slot.room ? slot.room.name : ""})`
                         : ""}
                     </td>
                   ))}
