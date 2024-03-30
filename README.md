@@ -18,6 +18,8 @@ constraints:
 [done] labs should be assigned to practical subjects
 [done] exact number of lectures, tutorials and  practicals per week (this can vary)
 [done] rooms only from that department should be allocated
+[done] create faculty timetable
+[] add meetings from meeting info to faculty timetables 
 [] no room clashes with other classes in the same day for same timeSlot
 [] while practicals are scheduled then all the practical batches must be allocated to separate labs
 [] workshop subject to be assigned only if there is any workshop available(check the workshop schedule)

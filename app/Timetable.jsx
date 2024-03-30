@@ -1391,14 +1391,19 @@ const Timetable = () => {
   const [bestTimetable, setBestTimetable] = useState([]);
   const [facultyTimetables, setFacultyTimetables] = useState({});
   const [showClassTimetables, setShowClassTimetables] = useState(true);
+  const [shouldRegenerateSchedule, setShouldRegenerateSchedule] =
+    useState(false);
   useEffect(() => {
     const populationSize = 100; // Set the desired population size
     const maxGenerations = 1000; // Set the maximum number of generations
 
-    let currentPopulation = initializePopulation(populationSize, classDetails);
-    setPopulation(currentPopulation);
-
     const runGeneticAlgorithm = () => {
+      let currentPopulation = initializePopulation(
+        populationSize,
+        classDetails
+      );
+      setPopulation(currentPopulation);
+
       let currentGeneration = 0;
       while (currentGeneration < maxGenerations) {
         // Implement the genetic algorithm loop
@@ -1416,10 +1421,13 @@ const Timetable = () => {
       // Generate faculty timetables
       const facultyTimetablesData = generateFacultyTimetables(bestIndividual);
       setFacultyTimetables(facultyTimetablesData);
+
+      // Reset the shouldRegenerateSchedule state
+      setShouldRegenerateSchedule(false);
     };
 
     runGeneticAlgorithm();
-  }, []);
+  }, [shouldRegenerateSchedule]);
 
   const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
   const getPracticalBatches = (practical_batch) => {
@@ -1435,6 +1443,12 @@ const Timetable = () => {
   return (
     <div>
       <nav className="flex justify-center mb-4 gap-3">
+        <button
+          className="px-4 py-2 rounded bg-blue-500 text-white flex items-center gap-2"
+          onClick={() => setShouldRegenerateSchedule(true)}
+        >
+           Regenerate
+        </button>
         <button
           className={`px-4 py-2 rounded ${
             showClassTimetables ? "bg-blue-500 text-white" : "bg-gray-200"
@@ -1536,54 +1550,55 @@ const Timetable = () => {
               </div>
             </div>
           ))
-        : !showClassTimetables && bestTimetable.length > 0 ? (
-      Object.entries(facultyTimetables).map(
-        ([facultyName, facultyTimetable], index) => (
-          <div key={index} className="p-3">
-            <h2 className="mt-5 mb-5">{facultyName}</h2>
-            <table className="table-auto w-full text-center border-2">
-              <thead>
-                <tr>
-                  <th></th>
-                  {getTimeslots("TE").map((slot, index) => (
-                    <th key={index} className="bg-slate-300">
-                      {slot}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="border-2">
-                {daysOfWeek.map((day, dayIndex) => (
-                  <tr key={dayIndex}>
-                    <td className="border-2 bg-slate-300">{day}</td>
-                    {getTimeslots("TE").map((timeslot, timeslotIndex) => (
-                      <td
-                        className="border-2 min-w-32 max-w-40 h-16"
-                        key={timeslotIndex}
-                      >
-                        {facultyTimetable
-                          .filter(
-                            (slot) =>
-                              slot.day === dayIndex + 1 &&
-                              timeslot.includes(slot.timeslot)
-                          )
-                          .map((slot, slotIndex) => (
-                            <div key={slotIndex}>
-                              {slot.subject} ({slot.class}) ({slot.room})
-                              <br />
-                              {timeslot.split(" - ")[0]} - {timeslot.split(" - ")[1]}
-                            </div>
-                          ))}
-                      </td>
+        : !showClassTimetables && bestTimetable.length > 0
+        ? Object.entries(facultyTimetables).map(
+            ([facultyName, facultyTimetable], index) => (
+              <div key={index} className="p-3">
+                <h2 className="mt-5 mb-5">{facultyName}</h2>
+                <table className="table-auto w-full text-center border-2">
+                  <thead>
+                    <tr>
+                      <th></th>
+                      {getTimeslots("TE").map((slot, index) => (
+                        <th key={index} className="bg-slate-300">
+                          {slot}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="border-2">
+                    {daysOfWeek.map((day, dayIndex) => (
+                      <tr key={dayIndex}>
+                        <td className="border-2 bg-slate-300">{day}</td>
+                        {getTimeslots("TE").map((timeslot, timeslotIndex) => (
+                          <td
+                            className="border-2 min-w-32 max-w-40 h-16"
+                            key={timeslotIndex}
+                          >
+                            {facultyTimetable
+                              .filter(
+                                (slot) =>
+                                  slot.day === dayIndex + 1 &&
+                                  timeslot.includes(slot.timeslot)
+                              )
+                              .map((slot, slotIndex) => (
+                                <div key={slotIndex}>
+                                  {slot.subject} ({slot.class}) ({slot.room})
+                                  <br />
+                                  {timeslot.split(" - ")[0]} -{" "}
+                                  {timeslot.split(" - ")[1]}
+                                </div>
+                              ))}
+                          </td>
+                        ))}
+                      </tr>
                     ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )
-      )
-    ) : null}
+                  </tbody>
+                </table>
+              </div>
+            )
+          )
+        : null}
     </div>
   );
 };
