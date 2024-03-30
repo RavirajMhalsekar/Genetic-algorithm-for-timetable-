@@ -3,47 +3,6 @@ we are making a timetable generator for our college
 the frontend is done using nextjs 14 using Typescript and Tailwindcss
 the database we are using is the Appwrite cloud database and it has the following collections and attributes
 
-room {
-name: string
-capacity: integer 
-} 
- lab {
-name: string
-subject: string
-department: string
-capacity: integer
-}
- faculty {
-name: string
-designation: string
-department: string
-shortName: string
-}
-subject {
-name: string
-code: string
-lecture: integer
-practical: integer
-tutorial: integer
-semester: integer
-department: string
-split: string
-shortName: string
-}
-meetingInfo{
-name: string
-day: enum[Monday,Tuesday,Wednesday,Thursday,Friday,Saturday ]
-time: string (eg. 09:30AM)
-}
-workshop{
-day: enum[Monday,Tuesday,Wednesday,Thursday,Friday,Saturday ]
-startTime: string (eg. 09:30AM)
-endTime: string (eg. 09:30AM)
-}
-
-we have created a dashboard to interact with the database
-all the tables mentioned above store the respective data
-
 
 aim of the project: using all the data from the database we have to generate the timetable for the entire college
 
@@ -54,4 +13,17 @@ from the UI when we send data to the algorithm these are all the values that wil
 first, the room data will store info about all the rooms available for each department 
 
 
-
+constraints:
+[done] subjects scheduled from the selected subjects list only
+[done] labs should be assigned to practical subjects
+[done] exact number of lectures, tutorials and  practicals per week (this can vary)
+[done] rooms only from that department should be allocated
+[] no room clashes with other classes in the same day for same timeSlot
+[] while practicals are scheduled then all the practical batches must be allocated to separate labs
+[] workshop subject to be assigned only if there is any workshop available(check the workshop schedule)
+[] if a teacher teaches  more than one subject then don't assign her to another class if she is already assigned to a class for that timeSlot (assign teachers according to their availability)
+[] track the room/labs available at every time to use the rooms available efficiently
+[] if a subject has split then pair it with another subject which also has a split and add them in one cell in the output
+[] if subject has openElective="YES" then combine all the open elective subjects into 1 cell but assign different class for each
+[] assign teachers according to their availability
+[] handle combining different department students for professional and open elective

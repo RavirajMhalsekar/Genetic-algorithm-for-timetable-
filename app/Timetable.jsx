@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 
 const classDetails = [
   {
-    department: "IT",
+    department: "COMP",
     year: "FE",
     div: "A",
     strength: 88,
@@ -520,7 +520,7 @@ const labs = [
     capacity: 25,
   },
   {
-    name: "lab5",
+    name: "ITlab5",
     subject: "sub5",
     department: "IT",
     capacity: 25,
