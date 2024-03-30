@@ -231,7 +231,7 @@ const classDetails = [
         Split: "NO",
         openElective: "NO",
         studentCount: null,
-        faculty: { name: "Vijay Kumar Pawar ", shortName: "VP" },
+        faculty: { name: "Vijay Kumar Pawar", shortName: "VP" },
       },
       {
         name: "Artificial Intelligence",
@@ -386,7 +386,7 @@ const classDetails = [
         Split: "NO",
         openElective: "NO",
         studentCount: null,
-        faculty: { name: "Vijaykumar Pawar", shortName: "VP" },
+        faculty: { name: "Vijay Kumar Pawar", shortName: "VP" },
       },
       {
         name: "Project Work Phase II",
@@ -1531,25 +1531,6 @@ const Timetable = () => {
                         </td>
                       </tr>
                     ))}
-                  </tbody>
-                </table>
-                <table className="table-auto mt-4 border-2">
-                  <thead>
-                    <tr>
-                      <th colSpan={2} className="bg-slate-300">
-                        Practical Batches
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {getPracticalBatches(timetableForClass.practical_batch).map(
-                      (batch, index) => (
-                        <tr key={index}>
-                          <td className="border-2 min-w-24">{batch}</td>
-                          <td className="border-2 min-w-24"></td>
-                        </tr>
-                      )
-                    )}
                   </tbody>
                 </table>
               </div>
