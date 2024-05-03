@@ -16,16 +16,14 @@ first, the room data will store info about all the rooms available for each depa
 constraints:
 [done] subjects scheduled from the selected subjects list only
 [done] labs should be assigned to practical subjects
-[done] exact number of lectures, tutorials and  practicals per week (this can vary)
+[done] exact number of lectures, tutorials and  practicals per week
 [done] rooms only from that department should be allocated
 [done] create faculty timetable
+[] workshop subject to be assigned only if there is any workshop available(check the workshop schedule)
 [] add meetings from meeting info to faculty timetables 
 [] no room clashes with other classes in the same day for same timeSlot
 [] while practicals are scheduled then all the practical batches must be allocated to separate labs
-[] workshop subject to be assigned only if there is any workshop available(check the workshop schedule)
 [] if a teacher teaches  more than one subject then don't assign her to another class if she is already assigned to a class for that timeSlot (assign teachers according to their availability)
-[] track the room/labs available at every time to use the rooms available efficiently
 [] if a subject has split then pair it with another subject which also has a split and add them in one cell in the output
 [] if subject has openElective="YES" then combine all the open elective subjects into 1 cell but assign different class for each
-[] assign teachers according to their availability
 [] handle combining different department students for professional and open elective
