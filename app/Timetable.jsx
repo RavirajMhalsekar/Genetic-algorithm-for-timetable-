@@ -888,6 +888,15 @@ const generateRandomClassTimetable = (
           meetingData.time === timeslots[timeslot]
       );
 
+      // Check if this timeslot is a break
+      const isBreak =
+        ((year === "TE" || year === "BE") &&
+          ((timeslot === 2 && timeslots[timeslot] === "11:00 - 11:15") ||
+            (timeslot === 5 && timeslots[timeslot] === "1:15 - 2:00"))) ||
+        ((year === "FE" || year === "SE") &&
+          timeslot === 3 &&
+          timeslots[timeslot] === "12:00 - 1:00");
+
       if (meetingOnThisTimeslot) {
         // If there is a meeting, add a meeting slot
         const slot = {
@@ -899,6 +908,16 @@ const generateRandomClassTimetable = (
               meetingData.day.toUpperCase() === daysOfWeek[day].toUpperCase() &&
               meetingData.time === timeslots[timeslot]
           ).name,
+        };
+        dailySchedule.push(slot);
+      } else if (isBreak) {
+        // If it's a break timeslot, add a break slot
+        const slot = {
+          room: null,
+          subject: null,
+          type: "break",
+          startTime: timeslots[timeslot].split(" - ")[0],
+          endTime: timeslots[timeslot].split(" - ")[1],
         };
         dailySchedule.push(slot);
       } else {
@@ -957,21 +976,6 @@ const generateRandomClassTimetable = (
               : ++subjectInstanceCounts[subjectData.code][type], // Add instance count to the slot
           // Add other necessary information
         };
-
-        // Add break slots
-        if ((year === "TE" || year === "BE") && timeslot === 2) {
-          slot.type = "break";
-          slot.startTime = "11:00 AM";
-          slot.endTime = "11:15 AM";
-        } else if ((year === "TE" || year === "BE") && timeslot === 5) {
-          slot.type = "break";
-          slot.startTime = "1:15 PM";
-          slot.endTime = "2:00 PM";
-        } else if ((year === "FE" || year === "SE") && timeslot === 3) {
-          slot.type = "break";
-          slot.startTime = "12:00 PM";
-          slot.endTime = "1:00 PM";
-        }
 
         dailySchedule.push(slot);
       }
@@ -1087,19 +1091,23 @@ const checkRoomAllocation = (timetable, classDetails) => {
 
           if (subjectDepartment === department) {
             // Subject department matches the class department
-            if (room.department !== department) {
+            if (room && room.department !== department) {
               // Room department does not match class department
               return false;
             }
           } else {
             // Subject department is different from class department
-            if (room.department !== subjectDepartment) {
+            if (room && room.department !== subjectDepartment) {
               // Room department does not match subject department
               return false;
             }
           }
 
-          if (subject && subject.practical > 0 && room.type !== "lab") {
+          if (
+            subject &&
+            subject.practical > 0 &&
+            (!room || room.type !== "lab")
+          ) {
             // Practical subject not assigned to a lab
             return false;
           }
@@ -1109,7 +1117,6 @@ const checkRoomAllocation = (timetable, classDetails) => {
   }
   return true;
 };
-
 const checkLabAllocation = (timetable, classDetails) => {
   for (const classTimeTable of timetable) {
     const { department, practical_batch } = classTimeTable;
@@ -1314,40 +1321,36 @@ const checkBreakTimings = (timetable) => {
     const { year, timetable } = classTimeTable;
 
     for (const dailySchedule of timetable) {
-      if (year === "TE" || year === "BE") {
-        const teaBreakSlot = dailySchedule.find(
-          (slot) =>
-            slot.startTime === "11:00 AM" &&
-            slot.endTime === "11:15 AM" &&
-            slot.type !== "break"
+      const timeslots = getTimeslots(year);
+
+      // Check for break slots
+      const breakSlots = dailySchedule.filter((slot) => slot.type === "break");
+
+      for (const breakSlot of breakSlots) {
+        const breakStartIndex = timeslots.findIndex(
+          (slot) => slot === breakSlot.startTime
         );
-        const lunchBreakSlot = dailySchedule.find(
-          (slot) =>
-            slot.startTime === "1:15 PM" &&
-            slot.endTime === "2:00 PM" &&
-            slot.type !== "break"
+        const breakEndIndex = timeslots.findIndex(
+          (slot) => slot === breakSlot.endTime
         );
 
-        if (teaBreakSlot || lunchBreakSlot) {
-          return false;
-        }
-      } else if (year === "FE" || year === "SE") {
-        const lunchBreakSlot = dailySchedule.find(
-          (slot) =>
-            slot.startTime === "12:00 PM" &&
-            slot.endTime === "1:00 PM" &&
-            slot.type !== "break"
-        );
-
-        if (lunchBreakSlot) {
-          return false;
+        // Check if any subject is assigned during the break timings
+        for (let i = breakStartIndex; i < breakEndIndex; i++) {
+          const slotDuringBreak = dailySchedule.find(
+            (slot) =>
+              slot.timeslot === timeslots[i] &&
+              slot.subject !== null &&
+              slot.type !== "break"
+          );
+          if (slotDuringBreak) {
+            return false;
+          }
         }
       }
     }
   }
   return true;
 };
-
 const areConsecutiveSlots = (slot1, slot2) => {
   const slot1StartTime = new Date(`2000-01-01T${slot1.startTime}`);
   const slot1EndTime = new Date(`2000-01-01T${slot1.endTime}`);
